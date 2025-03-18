@@ -1,0 +1,297 @@
+---
+title: "Homework 3 part 1-2,4"
+author: "Mariam Mkrtichyan"
+date: "2025-01-18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Read dataset
+file_path <- "mobiles_dataset.csv"
+df <- read.csv(file_path, stringsAsFactors = FALSE)
+
+# Define currency conversion rates
+conversion_rates <- c(PKR = 0.0036, INR = 0.011, CNY = 0.14, AED = 0.27)
+
+# Convert prices to USD
+df <- df %>%
+  mutate(
+    Price_USD_PKR = Launched.Price.Pakistan.PKR * conversion_rates["PKR"],
+    Price_USD_INR = Launched.Price.India.INR * conversion_rates["INR"],
+    Price_USD_CNY = Launched.Price.China.CNY * conversion_rates["CNY"],
+    Price_USD_AED = Launched.Price.Dubai.AED * conversion_rates["AED"]
+  )
+
+# Check correlation between battery capacity and price across currencies
+correlations <- data.frame(
+  Currency = c("PKR", "INR", "CNY", "AED", "USD"),
+  Correlation = c(
+    cor(df$Battery.Capacity.mAh, df$Price_USD_PKR, use = "complete.obs"),
+    cor(df$Battery.Capacity.mAh, df$Price_USD_INR, use = "complete.obs"),
+    cor(df$Battery.Capacity.mAh, df$Price_USD_CNY, use = "complete.obs"),
+    cor(df$Battery.Capacity.mAh, df$Price_USD_AED, use = "complete.obs"),
+    cor(df$Battery.Capacity.mAh, df$Launched.Price.USA.USD, use = "complete.obs")
+  )
+)
+
+print(correlations)
+
+# Visualize relationship battery charge and price with scatter plots
+ggplot(df, aes(x = Battery.Capacity.mAh, y = Launched.Price.USA.USD)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_smooth(method = "lm", col = "red") +
+  labs(title = "Battery Capacity vs Launched Price (USD)", 
+       x = "Battery Capacity (mAh)", 
+       y = "Price in USD") + theme_minimal()
+
+#No correlation or little negative correlation is suggested based on scatter
+#plot. Phone with similar battery capasity(3500-6000mAh)have a wide range of
+#prices. Some phones with (<=3000)are priced higher. We can concldue that ther is no or little
+#relation. Ensure RAM is numeric by removing non-numeric characters and converting.
+
+
+# 2. Visualize relationship RAM size and price with scatter plots
+df$RAM <- as.numeric(gsub("GB", "", df$RAM))
+
+ggplot(df, aes(x = RAM, y = Launched.Price.USA.USD)) +
+  geom_point(color = "blue", alpha = 0.5) + 
+  geom_smooth(method = "lm", col = "red") +
+  labs(title = "RAM vs Launched Price (USD)", 
+       x = "RAM",
+       y = "Price in USD") + theme_minimal()
+
+#Certainly there is relation between lower of margin of prices and RAM size as we can notice that minimum price depend on 
+#RAM size but price is not only correlated to RAM size as with low RAM size there are phones with higher price which will be due to other attributes of phone.
+
+
+# 3.Apple devices 
+# Apple Price Variation Across Regions
+apple_prices <- df %>%
+  filter(Company.Name == "Apple") %>%
+  select(Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED) %>%
+  pivot_longer(cols = c(Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED), 
+               names_to = "Region", values_to = "Price") %>%
+  mutate(Region = recode(Region, 
+                         "Price_USD_PKR" = "Pakistan",
+                         "Price_USD_INR" = "India",
+                         "Price_USD_CNY" = "China",
+                         "Launched.Price.USA.USD" = "USA",  # Ensure USA is included
+                         "Price_USD_AED" = "Dubai"))
+
+
+ggplot(df, aes(x = Region, y = Price, fill = Region)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Apple Device Prices by Country",
+       x = "Country",
+       y = "Price in USD") +
+  scale_fill_manual(values = c("Pakistan" = "#CD7F32", "India" = "blue", "China" = "gold", "USA" = "pink", "Dubai" = "orange")) +
+  theme(legend.position = "none") 
+
+ggplot(apple_prices, aes(x = Region, y = Price, fill = Region)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Apple Device Prices by Country",
+       x = "Country",
+       y = "Price in USD") +
+  scale_fill_manual(values = c("Pakistan" = "#CD7F32", "India" = "blue", "China" = "gold", "USA" = "pink", "Dubai" = "orange")) +
+  theme(legend.position = "none") 
+# other device
+device_prices <- df %>%
+  filter(Company.Name %in% c("Apple", "Samsung", "Xiaomi")) %>%
+  select(Company.Name, Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED) %>%
+  pivot_longer(cols = c(Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED), 
+               names_to = "Region", values_to = "Price") %>%
+  mutate(Region = recode(Region, 
+                         "Price_USD_PKR" = "Pakistan",
+                         "Price_USD_INR" = "India",
+                         "Price_USD_CNY" = "China",
+                         "Launched.Price.USA.USD" = "USA",  
+                         "Price_USD_AED" = "Dubai"))
+ggplot(device_prices, aes(x = Region, y = Price, fill = Company.Name)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Device Prices by Country",
+       x = "Country",
+       y = "Price in USD") +
+  scale_fill_manual(values = c("Apple" = "#CD7F32", "Samsung" = "blue", "Xiaomi" = "gold")) +
+  theme(legend.position = "top")
+
+
+
+
+#3. 
+df <- df %>%
+  mutate(across(
+    c(Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED),
+    ~ case_when(
+      . < 300 ~ "Budget",
+      . >= 300 & . <= 700 ~ "Mid-range",
+      . > 700 ~ "Premium"
+    ),
+    .names = "Segment_{.col}"
+  ))
+
+# Count the number of models in each segment per brand
+segment_counts <- df %>%
+  group_by(Company.Name, Price_Segment) %>%
+  summarise(Model_Count = n(), .groups = 'drop')
+
+# Bar plot: Price Segments by Brand
+ggplot(segment_counts, aes(x = Company.Name, y = Model_Count, fill = Price_Segment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Smartphone Brands Across Price Segments",
+       x = "Brand",
+       y = "Number of Models") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("Premium" = "red", "Mid-range" = "orange", "Budget" = "blue"))
+
+
+#4.
+# Check average price by brand and region
+brand_region_prices <- df %>%
+  group_by(Company.Name, Region) %>%
+  summarise(Average_Price = mean(Price), .groups = 'drop')
+
+# View this data to see any regional pricing patterns
+region_prices
+# Bar plot: Average price by region
+ggplot(region_prices, aes(x = Region, y = Average_Price, fill = Region)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Average Smartphone Prices by Region",
+       x = "Region",
+       y = "Average Price") +
+  scale_fill_brewer(palette = "Set3")
+
+#5
+# Check average price by brand and region
+# Filter and transform the data
+device_prices <- df %>%
+  filter(Company.Name %in% c("Apple", "Samsung", "Xiaomi")) %>%
+  select(Company.Name, Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED) %>%
+  pivot_longer(
+    cols = c(Price_USD_PKR, Price_USD_INR, Price_USD_CNY, Launched.Price.USA.USD, Price_USD_AED), 
+    names_to = "Region", 
+    values_to = "Price"
+  ) %>%
+  mutate(Region = recode(Region, 
+                         "Price_USD_PKR" = "Pakistan",
+                         "Price_USD_INR" = "India",
+                         "Price_USD_CNY" = "China",
+                         "Launched.Price.USA.USD" = "USA",  
+                         "Price_USD_AED" = "Dubai")) %>%
+  group_by(Company.Name, Region) %>%  # Group by brand and region
+  summarise(Average_Price = mean(Price, na.rm = TRUE), .groups = 'drop')  # Calculate average price
+
+# View the summarized data
+print(device_prices)
+
+# Plot the average prices
+ggplot(device_prices, aes(x = Region, y = Average_Price, fill = Company.Name)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Average Device Prices by Country",
+       x = "Country",
+       y = "Average Price in USD") +
+  scale_fill_manual(values = c("Apple" = "#CD7F32", "Samsung" = "blue", "Xiaomi" = "gold")) +
+  theme(legend.position = "top")
+
+#Problem 2 
+# Count the number of models per brand
+brand_market_share <- df %>%
+  group_by(Company.Name) %>%
+  summarise(Model_Count = n(), .groups = 'drop') %>%
+  mutate(Percentage = Model_Count / sum(Model_Count) * 100)
+
+# Pie chart with improved colors
+ggplot(brand_market_share, aes(x = "", y = Percentage, fill = Company.Name)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start = 0) +
+  labs(title = "Smartphone Brand Market Share", fill = "Brand") +
+  theme_void() + 
+  theme(legend.position = "right") +
+  scale_fill_viridis_d(option = "plasma")  # Use the "plasma" color scheme
+
+
+
+#Problem 3
+# Create the boxplot
+
+df_usa <- df %>%
+  filter(!is.na(launched_price_usa_usd)) %>%
+  mutate(company_name = factor(company_name, levels = brand_order))
+
+ggplot(df_usa, aes(x = company_name, y = launched_price_usa_usd, fill = company_name)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.15, size = 1.5, alpha = 0.5) +
+  labs(title = "Price Distribution by Company in USA",
+       subtitle = "A boxplot showing how the price varies by company, with individual data points overload",
+       x = "", y = "Price (USD)") +
+  theme_minimal() +
+  scale_fill_manual(values = brand_colors) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none",
+    plot.title = element_text(face = "bold", size = 14),  # Bold title
+    plot.subtitle = element_text(face = "italic", size = 10)  # Italic subtitle
+  )
+
+
+
+#Problem 4
+
+# 2. Visualize relationship Back Camera and price with scatter plots
+df$Back.Camera <- as.numeric(gsub("MP", "", df$Back.Camera))
+
+ggplot(df, aes(x = RAM, y = Launched.Price.USA.USD)) +
+  geom_point(color = "blue", alpha = 0.5) + 
+  geom_smooth(method = "lm", col = "red") +
+  labs(title = "Back Camera vs Launched Price (USD)", 
+       x = "Back Camera",
+       y = "Price in USD") + theme_minimal()
+
+
+# Visualize relationship battery charge and price with scatter plots
+ggplot(df, aes(x = Screen.Size.inches, y = Launched.Price.USA.USD)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_smooth(method = "lm", col = "red") +
+  labs(title = "Screen Size vs Launched Price (USD)", 
+       x = "Screen Size", 
+       y = "Price in USD") + theme_minimal()
+
+# Visualize relationship battery charge and price with scatter plots
+ggplot(df, aes(x = Mobile.Weight, y = Launched.Price.USA.USD)) +
+  geom_point(color = "blue", alpha = 0.5) +
+  geom_smooth(method = "lm", col = "red") +
+  labs(title = "Weight vs Launched Price (USD)", 
+       x = "Weight", 
+       y = "Price in USD") + theme_minimal()
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
